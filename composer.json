@@ -1,0 +1,32 @@
+{
+    "name": "arnavision/payment",
+    "version": "1.0.0",
+    "description": "This package is built for a multi-gateway payment system in Laravel.",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Ali Khalaj",
+            "email": "akh30002@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Arnavision\\PaymentGateway\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Arnavision\\PaymentGateway\\PaymentGatewayServiceProvider"
+            ],
+            "aliases": {
+                "PaymentGateway": "Arnavision\\PaymentGateway\\Facades\\PaymentGateway"
+            }
+        }
+    },
+    "require": {},
+    "require-dev":{},
+
+    "prefer-stable": true
+}
