@@ -11,7 +11,7 @@ return [
             'wsdl' => 'https://bpm.shaparak.ir/pgwchannel/services/pgw?wsdl',
         ],
         'melli' => [
-            'api_url'=> env('MELLI_URL'),
+            'api_url' => env('MELLI_URL'),
             'merchant_id' => env('MELLI_MERCHANT_ID'),
             'api_key' => env('MELLI_API_KEY'),
             'callback_url' => env('MELLI_CALLBACK_URL'),
@@ -22,6 +22,12 @@ return [
             // IRR for Rial or IRT for Toman
             'currency' => env('ZARINPAL_CURRENCY', 'IRT'),
             'testing' => false,
+        ],
+        'tara' => [
+            'api_url' => env('TARA_URL'),
+            'username' => env('TARA_USERNAME'),
+            'password' => env('TARA_PASSWORD'),
+            'service_id' => env('TARA_SERVICE_ID')
         ]
     ],
 ];

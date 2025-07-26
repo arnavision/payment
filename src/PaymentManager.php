@@ -4,9 +4,11 @@ namespace Arnavision\PaymentGateway;
 
 use Arnavision\PaymentGateway\Contracts\GatewayInterface;
 use Arnavision\PaymentGateway\Drivers\Mellat\MellatDriver;
+use Arnavision\PaymentGateway\Drivers\Tara\TaraDriver;
 use Arnavision\PaymentGateway\Drivers\Zarinpal\ZarinpalDriver;
 use Arnavision\PaymentGateway\Drivers\Melli\MelliDriver;
 use Illuminate\Http\Response;
+
 class PaymentManager
 {
     protected $gateway;
@@ -23,6 +25,7 @@ class PaymentManager
             'mellat' => new MellatDriver(),
             'melli' => new MelliDriver(),
             'zarinpal'=> new ZarinpalDriver(),
+            'tara'=>new TaraDriver(),
             default => throw new \InvalidArgumentException("درگاه {$driver} پشتیبانی نمی‌شود."),
         };
     }
