@@ -47,7 +47,7 @@ class PaymentGatewayLog extends Model
 
 
 
-    public static function pay_log(string $payment_id, string $response_pay, string $authority = null)
+    public static function pay_log(string $payment_id, string $response_pay)
     {
         $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
 
@@ -131,6 +131,38 @@ class PaymentGatewayLog extends Model
     }
 
 
+
+
+
+
+    public static function set_transaction_id(string $payment_id, string $transaction_id)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id' => $payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->transaction_id  = $transaction_id;
+        $log->save();
+
+    }
+
+
+
+
+
+    public static function get_transaction_id(string $transaction_id)
+    {
+        $log = PaymentGatewayLog::query()->where(['transaction_id' => $transaction_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        return $log;
+
+    }
 
 
 

@@ -28,6 +28,15 @@ return [
             'username' => env('TARA_USERNAME'),
             'password' => env('TARA_PASSWORD'),
             'service_id' => env('TARA_SERVICE_ID')
-        ]
+        ],
+
+        'fadax' => [
+            'api_url' => env('FADAX_URL'),
+            'username' => env('FADAX_USERNAME'),
+            'password' => env('FADAX_PASSWORD'),
+            'token_bearer' => env('FADAX_TOKEN'),
+        ],
+
+
     ],
 ];
