@@ -60,7 +60,7 @@
     <div class="bounce2"></div>
     <div class="bounce3"></div>
 </div>
-<form class="text-center mt-2" method="<?php echo htmlentities($method) ?>" action="<?php echo htmlentities($action) ?>">
+<form class="text-center mt-2" name="MyForm" method="<?php echo htmlentities($method) ?>" action="<?php echo htmlentities($action) ?>">
     <p>در حال انتقال به درگاه پرداخت امن.</p>
     <p>
         اگر در عرض
@@ -75,19 +75,16 @@
     <button type="submit">اینجا کلیک کنید</button>
 </form>
 <script>
+
+    document.MyForm.submit();
+
     // Total seconds to wait
     var seconds = 10;
 
-    function submitForm() {
-        document.forms[0].submit();
-    }
 
     function countdown() {
         seconds = seconds - 1;
-        if (seconds <= 0) {
-            // submit the form
-            submitForm();
-        } else {
+        if (seconds > 0) {
             // Update remaining seconds
             document.getElementById("countdown").innerHTML = seconds;
             // Count down using javascript
@@ -95,7 +92,6 @@
         }
     }
 
-    // Run countdown function
     countdown();
 </script>
 </body>
