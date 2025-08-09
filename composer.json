@@ -1,6 +1,6 @@
 {
     "name": "arnavision/payment",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "This package is built for a multi-gateway payment system in Laravel.",
     "license": "MIT",
     "type": "library",
