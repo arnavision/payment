@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Forwarding to secure payment provider</title>
+    <title>در حال انتقال به درگاه پرداخت</title>
     <style>
         .text-center {
             text-align: center;
@@ -62,6 +62,9 @@
 </div>
 <form class="text-center mt-2" name="MyForm" method="<?php echo htmlentities($method) ?>" action="<?php echo htmlentities($action) ?>">
     <p>در حال انتقال به درگاه پرداخت امن.</p>
+    <br>
+    <p><strong style="color: #e10000">در صورت وصل نشدن به درگاه پرداخت حتما vpn یا فیلترشکن خود را خاموش کنید.</strong></p>
+    <br>
     <p>
         اگر در عرض
         <span id="countdown">10</span>
