@@ -132,6 +132,35 @@ class PaymentGatewayLog extends Model
 
 
 
+    public static function refund_log(string $payment_id, string $response_refund)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->response_refund  = $response_refund;
+        $log->save();
+    }
+
+
+
+
+
+    public static function set_token(string $payment_id, string $token)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id' => $payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->token  = $token;
+        $log->save();
+    }
+
+
 
 
 

@@ -38,5 +38,17 @@ return [
         ],
 
 
+
+
+
+        'apsan' => [
+            'username' => env('APSAN_USERNAME'),
+            'password' => env('APSAN_PASSWORD'),
+            'terminal' => env('APSAN_TERMINAL'),
+        ],
+
+
+
+
     ],
 ];
