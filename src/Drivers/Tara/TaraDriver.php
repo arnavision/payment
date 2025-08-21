@@ -21,6 +21,7 @@ class TaraDriver extends Driver
     private $payment_id;
     private $trace_number;
     private $state;
+    private $amount;
     protected $URL_AUTH;
     protected $URL_TOKEN;
     protected $URL_PURCHASE;
@@ -61,12 +62,14 @@ class TaraDriver extends Driver
     {
         $url =  $this->URL_AUTH ;
 
+
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
         ])->post($url, [
             'username' => $this->config['username'],
-            'password' => $this->config['password'], // اصلاح شد: باید password باشد نه username
+            'password' => $this->config['password'],
         ]);
+
         if ($response->failed()) {
             return [
                 'error' => 'Failed to authenticate',
@@ -78,25 +81,31 @@ class TaraDriver extends Driver
     }
 
 
-
     public function setParamsCallback(Request $request)
     {
 
-        $payment_id  = $request->post('OrderId');
-        $Token       = $request->post('token');
-        $ResCode     = $request->post('ResCode');
+        $result           = $request->post('result');
+        $token            = $request->post('token');
+        $channelRefNumber = $request->post('channelRefNumber');
+        $payment_id       = $request->post('additionalData');
 
-        $this->payment_id = $payment_id;
-        $this->token      = $Token;
+        $this->payment_id   = $payment_id;
+        $this->token        = $token;
+        $this->ref_num      = $channelRefNumber;
 
-        if ($ResCode == "0"){
+        $paymentGatewayLog = PaymentGatewayLog::get_log($payment_id);
+        $this->amount = $paymentGatewayLog->amount;
+
+
+
+        if($result == 0){
             $this->state = true;
         }
         else{
             $this->state = false;
         }
 
-        PaymentGatewayLog::callback_log($payment_id, json_encode($request->all()), $this->state, $this->ref_num, $this->trace_number);
+        PaymentGatewayLog::callback_log($payment_id, json_encode($request->all()), $this->state, $this->ref_num, null);
     }
 
 
@@ -113,57 +122,6 @@ class TaraDriver extends Driver
     }
 
 
-    public function get_token($amount, $orderId, $mobile, $invoiceItems)
-    {
-        try {
-
-            $authResult = $this->getTokenAuth();
-
-            $token = $authResult['accessToken'] ?? null;
-
-            if (!$token) {
-                abort(500, 'Failed to get authentication token');
-            }
-
-            $requestData = [
-                'additionalData' => $orderId,
-                'callBackUrl' => $this->callbackUrl,
-                'vat' => '0',
-                'amount' => $amount,
-                'mobile' => $mobile,
-                'orderid' => $orderId,
-                'ip' => request()->ip(),
-                'serviceAmountList' => [
-                    [
-                        'serviceId' => $this->config['service_id'],
-                        'amount' => $amount
-                    ]
-                ],
-                'taraInvoiceItemList' => $invoiceItems
-            ];
-
-
-            $response = Http::withHeaders([
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $token
-            ])->post($this->URL_TOKEN, $requestData);
-
-            if ($response->failed()) {
-                abort(500, 'Payment gateway request failed');
-            }
-
-            $responseData = $response->json();
-
-            return $responseData['token'] ?? null;
-
-        } catch (Exception $e) {
-            Log::error('Payment error: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-
     public function pay(int $amount, string $payment_id, string $callback, array $extra = []): RedirectionForm
     {
 
@@ -173,46 +131,81 @@ class TaraDriver extends Driver
 
         PaymentGatewayLog::start_log($amount, $payment_id, $callback, 'tara', $extra);
 
-
         try {
-            // دریافت توکن احراز هویت
-            $token = $this->get_token($amount, $payment_id, $extra['mobile'] ?? '');
 
-            // آماده سازی داده‌های درخواست
-            $paymentData = [
-                'username' => $this->config['username'],
-                'token' => $token,
+            $authResult = $this->getTokenAuth();
+
+            $bearer_token = $authResult['accessToken'] ?? null;
+
+            if (!$bearer_token) {
+                abort(500, 'Failed to get authentication token');
+            }
+
+            $requestData = [
+                'additionalData' => $payment_id,
+                'callBackUrl' => $callback,
+                'vat' => '0',
                 'amount' => $amount,
-                'order_id' => $payment_id,
-                'callback_url' => $callback,
                 'mobile' => $extra['mobile'] ?? null,
+                'orderid' => $payment_id,
+                'ip' => $this->getIp(),
+                'serviceAmountList' => [
+                    [
+                        'serviceId' => $this->config['service_id'],
+                        'amount' => $amount
+                    ]
+                ],
+                'taraInvoiceItemList' => $extra['invoiceItems']
             ];
 
-            // ارسال درخواست به درگاه تارا
             $response = Http::withHeaders([
+                'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $this->getTokenAuth()
-            ])->post( $this->URL_PURCHASE, $paymentData);
+                'Authorization' => 'Bearer ' . $bearer_token
+            ])->post($this->URL_TOKEN, $requestData);
 
 
             PaymentGatewayLog::pay_log($payment_id, $response->body());
 
-            if ($response->successful() && $response['status'] == 'success') {
-                return $this->redirectWithForm($response['payment_url']);
-            }
-            else{
-                abort(500, ($response['message'] ?? 'Unknown error') );
+            if ($response->successful()) {
+
+                $responseData = $response->json();
+
+                if (isset($responseData['token'])){
+
+                    // آماده سازی داده‌های درخواست
+                    $paymentData = [
+                        'username' => $this->config['username'],
+                        'token' => $responseData['token'],
+                    ];
+
+                    return $this->redirectWithForm($this->URL_PURCHASE, $paymentData);
+
+                }
+
             }
 
-            throw new \Exception('Payment request failed: ' . ($response['message'] ?? 'Unknown error'));
+            abort(500, 'خطا در اتصال به درگاه پرداخت');
 
         } catch (\Exception $e) {
             abort(500, 'خطا در اتصال به درگاه پرداخت');
         }
+
     }
+
+
+
 
     public function verify()
     {
+
+        $authResult = $this->getTokenAuth();
+
+        $accessToken = $authResult['accessToken'] ?? null;
+
+        if (!$accessToken){
+            abort(500, 'access token dont exist');
+        }
 
         // آماده سازی داده‌های درخواست
         $verifyData = [
@@ -224,21 +217,15 @@ class TaraDriver extends Driver
         $response = Http::withHeaders([
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
-            'Authorization' => 'Bearer ' . $this->token
-        ])->post($this->baseUrl . '/purchaseVerify', $verifyData);
+            'Authorization' => 'Bearer ' . $accessToken
+        ])->post($this->URL_VERIFY, $verifyData);
 
 
         $result = $response->json();
 
+        PaymentGatewayLog::verify_log($this->payment_id, $response->body(), $this->ref_num, null);
 
-        PaymentGatewayLog::verifyLog(
-            $this->payment_id,
-            $response->body()
-        );
-
-
-        // ذخیره اطلاعات تراکنش
-        if ($response->successful() && isset($result['status']) && $result['status'] === 'success') {
+        if(isset($result['result']) && isset($result['amount']) && $result['result'] == 0 && $result['amount'] == $this->amount){
             return [
                 'status'  => 1,
                 'message' => 'Confirm is ok',
