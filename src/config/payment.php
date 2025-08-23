@@ -36,15 +36,15 @@ return [
             'password' => env('FADAX_PASSWORD'),
             'token_bearer' => env('FADAX_TOKEN'),
         ],
-
-
-
-
-
         'apsan' => [
             'username' => env('APSAN_USERNAME'),
             'password' => env('APSAN_PASSWORD'),
             'terminal' => env('APSAN_TERMINAL'),
+        ],
+        'sadad' => [
+            'merchant_config_id' => env('SADAD_MERCHANT_CONFIG_ID'),
+            'merchant_id'        => env('SADAD_MERCHANT_ID'),
+            'terminal_id'        => env('SADAD_TERMINAL_ID'),
         ],
 
 

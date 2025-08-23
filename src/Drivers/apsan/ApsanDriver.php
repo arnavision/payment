@@ -1,5 +1,5 @@
 <?php
-namespace Arnavision\PaymentGateway\Drivers\apsan;
+namespace Arnavision\PaymentGateway\Drivers\Apsan;
 
 
 use Arnavision\PaymentGateway\Abstracts\Driver;
@@ -237,6 +237,21 @@ class ApsanDriver extends Driver
         }
 
     }
+
+
+
+
+
+
+    public function settle()
+    {
+        PaymentGatewayLog::settle_log($this->payment_id, 'apsan has not settle',1);
+        return [
+            'status' => 1
+        ];
+    }
+
+
 
 
 
