@@ -97,6 +97,23 @@ class PaymentGatewayLog extends Model
 
 
 
+    public static function get_log_by_token(string $token)
+    {
+        $log = PaymentGatewayLog::query()->where(['token'=>$token, 'status' => 0])->first();
+
+        if (!$log){
+            abort(500, 'token dont exit');
+        }
+
+        return $log;
+    }
+
+
+
+
+
+
+
 
 
 
@@ -181,7 +198,7 @@ class PaymentGatewayLog extends Model
 
 
 
-    public static function get_transaction_id(string $transaction_id)
+    public static function get_log_by_transaction_id(string $transaction_id)
     {
         $log = PaymentGatewayLog::query()->where(['transaction_id' => $transaction_id])->first();
 

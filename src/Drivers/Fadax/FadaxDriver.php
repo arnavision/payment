@@ -89,7 +89,7 @@ class FadaxDriver extends Driver
         $transactionId   = $request->post('transactionId');
 
 
-        $payment = PaymentGatewayLog::get_transaction_id($transactionId);
+        $payment = PaymentGatewayLog::get_log_by_transaction_id($transactionId);
 
         $this->payment_id = $payment->payment_id;
 

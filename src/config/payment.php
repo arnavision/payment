@@ -47,6 +47,11 @@ return [
             'terminal_id'        => env('SADAD_TERMINAL_ID'),
         ],
 
+        'top' => [
+            'username' => env('TOP_USERNAME'),
+            'password' => env('TOP_PASSWORD'),
+        ],
+
 
 
 
