@@ -22,10 +22,20 @@ class TaraDriver extends Driver
     private $trace_number;
     private $state;
     private $amount;
-    protected $URL_AUTH;
-    protected $URL_TOKEN;
-    protected $URL_PURCHASE;
-    protected $URL_VERIFY;
+
+
+    private $base_url;
+    protected $url_auth;
+    protected $url_token;
+    protected $url_purchase;
+    protected $url_verify;
+    private $username;
+    private $password;
+    private $service_id;
+
+
+
+
     public function getPaymentId()
     {
         return $this->payment_id;
@@ -48,26 +58,32 @@ class TaraDriver extends Driver
         return $this->ref_num;
     }
 
+
     public function __construct()
     {
         $this->config = config('payment.gateways.tara');
-        $this->URL_AUTH = $this->config['api_url'] . '/v2/authenticate';
-        $this->URL_TOKEN = $this->config['api_url'] . '/getToken';
-        $this->URL_PURCHASE = $this->config['api_url'] . '/ipgPurchase';
-        $this->URL_VERIFY = $this->config['api_url'] . '/purchaseVerify';
+        $this->base_url = $this->config['base_url'];
+        $this->url_auth = $this->base_url . '/api/v2/authenticate';
+        $this->url_token = $this->base_url . '/api/getToken';
+        $this->url_purchase = $this->base_url . '/api/ipgPurchase';
+        $this->url_verify = $this->base_url . '/api/purchaseVerify';
+
+
+        $this->username = $this->config['username'];
+        $this->password = $this->config['password'];
+        $this->service_id = $this->config['service_id'];
     }
 
 
     public function getTokenAuth()
     {
-        $url =  $this->URL_AUTH ;
-
+        $url =  $this->url_auth ;
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
         ])->post($url, [
-            'username' => $this->config['username'],
-            'password' => $this->config['password'],
+            'username' => $this->username,
+            'password' => $this->password,
         ]);
 
         if ($response->failed()) {
@@ -162,8 +178,7 @@ class TaraDriver extends Driver
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
                 'Authorization' => 'Bearer ' . $bearer_token
-            ])->post($this->URL_TOKEN, $requestData);
-
+            ])->post($this->url_token, $requestData);
 
             PaymentGatewayLog::pay_log($payment_id, $response->body());
 
@@ -173,13 +188,12 @@ class TaraDriver extends Driver
 
                 if (isset($responseData['token'])){
 
-                    // آماده سازی داده‌های درخواست
                     $paymentData = [
-                        'username' => $this->config['username'],
-                        'token' => $responseData['token'],
+                        'username' => $this->username,
+                        'token'    => $responseData['token'],
                     ];
 
-                    return $this->redirectWithForm($this->URL_PURCHASE, $paymentData);
+                    return $this->redirectWithForm($this->url_purchase, $paymentData);
 
                 }
 

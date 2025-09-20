@@ -24,7 +24,7 @@ return [
             'testing' => false,
         ],
         'tara' => [
-            'api_url' => env('TARA_URL'),
+            'base_url' => env('TARA_URL'),
             'username' => env('TARA_USERNAME'),
             'password' => env('TARA_PASSWORD'),
             'service_id' => env('TARA_SERVICE_ID')
@@ -51,6 +51,14 @@ return [
             'username' => env('TOP_USERNAME'),
             'password' => env('TOP_PASSWORD'),
         ],
+
+
+
+        'saipay' => [
+            'username' => env('SAIPAY_USERNAME'),
+            'password' => env('SAIPAY_PASSWORD'),
+        ],
+
 
 
 
