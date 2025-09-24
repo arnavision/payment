@@ -232,12 +232,12 @@ class TaraDriver extends Driver
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
             'Authorization' => 'Bearer ' . $accessToken
-        ])->post($this->URL_VERIFY, $verifyData);
+        ])->post($this->url_verify, $verifyData);
 
 
         $result = $response->json();
 
-        PaymentGatewayLog::verify_log($this->payment_id, $response->body(), $this->ref_num, null);
+        PaymentGatewayLog::verify_log($this->payment_id, $response->body(), $this->ref_num, $this->trace_number);
 
         if(isset($result['result']) && isset($result['amount']) && $result['result'] == 0 && $result['amount'] == $this->amount){
             return [
