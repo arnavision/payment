@@ -61,6 +61,16 @@ return [
 
 
 
+        'snapp' => [
+            'url_base' => env('SNAPP_URL'),
+            'username' => env('SNAPP_USERNAME'),
+            'password' => env('SNAPP_PASSWORD'),
+            'client_id' => env('SNAPP_CLIENT_ID'),
+            'client_secret' => env('SNAPP_CLIENT_SECRET'),
+
+        ],
+
+
 
 
     ],

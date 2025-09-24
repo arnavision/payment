@@ -32,6 +32,7 @@ class PaymentManager
             'sadad'=>new SadadDriver(),
             'top'=>new TopDriver(),
             'saipay'=>new SaipayDriver(),
+            'snapp'=>new SaipayDriver(),
             default => throw new \InvalidArgumentException("درگاه {$driver} پشتیبانی نمی‌شود."),
         };
     }
