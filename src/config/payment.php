@@ -70,6 +70,11 @@ return [
 
         ],
 
+        'keepa' => [
+            'base_url' => env('KEEPA_BASE_URL', 'https://api.kipaa.ir'),
+            'token' => env('KEEPA_TOKEN'),
+        ],
+
 
 
 
