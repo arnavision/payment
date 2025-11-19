@@ -25,7 +25,7 @@ class KeepaDriver extends Driver
     protected string $url_status;
     protected string $url_settle;
     protected string $url_revert;
-    protected $amount;
+    private $amount;
 
     public function __construct()
     {
@@ -43,6 +43,11 @@ class KeepaDriver extends Driver
     public function getPaymentId()
     {
         return $this->payment_id;
+    }
+
+    public function setPaymentId($payment_id)
+    {
+        $this->payment_id = $payment_id;
     }
 
     public function getRefNum()
@@ -91,7 +96,7 @@ class KeepaDriver extends Driver
 
     public function setParamsCallback(Request $request)
     {
-        $paymentId = $request->input('payment_id');
+        $paymentId = $request->get('payment_id');
 
         $paymentLog = PaymentGatewayLog::get_log($paymentId);
 
@@ -119,7 +124,7 @@ class KeepaDriver extends Driver
         $this->amount = $paymentLog->amount;
 
 
-        PaymentGatewayLog::callback_log($paymentLog, json_encode($request->all()), $this->state, $this->ref_num, null);
+        PaymentGatewayLog::callback_log($paymentId, json_encode($request->all()), $this->state, $this->ref_num, null);
 
     }
 
@@ -146,10 +151,42 @@ class KeepaDriver extends Driver
             abort(400, 'invoiceItems is required for Keepa payments.');
         }
 
+        $data = $this->makeDetails($invoiceItems, $amount, $callbackUrl, $mobile, $payment_id, $extra['discount_price'], $extra['shipping_price']);
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $this->jwtToken(),
+            'Content-Type' => 'application/json',
+        ])->timeout(60)->post($this->url_payment_token, $data);
+
+        PaymentGatewayLog::pay_log($payment_id, $response->body());
+
+        if ($response->failed()) {
+            abort(500, 'خطا در اتصال به درگاه پرداخت');
+        }
+
+        $result = $response->json();
+
+        $token = $result['Content']['payment_token'] ?? null;
+        $paymentUrl = $result['Content']['payment_url'] ?? null;
+
+        if (!$token || !$paymentUrl) {
+            abort(500, 'دریافت توکن پرداخت کیپا با خطا مواجه شد');
+        }
+
+        PaymentGatewayLog::set_token($payment_id, $token);
+
+        $formInputs = [
+            'payment_token' => $token,
+        ];
+
+        return $this->redirectWithForm($paymentUrl, $formInputs);
+    }
 
 
-        $items = $invoiceItems;
 
+
+    private function makeDetails($items, $amount, $callbackUrl, $mobile, $payment_id, $discount_price, $shipping_price)
+    {
         $cartItems = [];
 
         $cost_good_total = 0;
@@ -165,30 +202,24 @@ class KeepaDriver extends Driver
                 $UnitID   = 1;
             }
             else{
-                $UnitName = $item['unit_weight'];
+                $UnitName = $item['unit_name'];
                 $UnitID   = $item['unit'] == 1 ? 3 : 2 ;
             }
 
             $cartItems [] = [
-
-                'ItemName' => $item['name'],
-                'ItemCode' => $item['product_id'],
-
-                "UnitName" => $UnitName,
-                "UnitID"   => $UnitID,
-
+                'ItemName'  => $item['name'],
+                'ItemCode'  => $item['product_id'],
+                "UnitName"  => $UnitName,
+                "UnitID"    => $UnitID,
                 "UnitPrice" => $good_price,
-
                 'Quantity' => $item['count'],
-                'Amount' => ($good_price * $item['count']),
-                "Discount"=> ($item['fee'] * $item['count'] * $item['discount'])/(100-$item['discount']),
-                'VAT'=> 0,
+                'Amount'   => ($good_price * $item['count']),
+                "Discount" => ($item['fee'] * $item['count'] * $item['discount'])/(100-$item['discount']),
+                'VAT'      => 0,
             ];
 
 
         }
-
-
 
         $data = [
             "amount"   => $amount,
@@ -211,9 +242,9 @@ class KeepaDriver extends Driver
                 "Items" => $cartItems,
                 "PaymentDetails" => [
                     "SubtotalAmount" => $cost_good_total,
-                    "Discount" => $extra['discount_price'] ?? 0,
+                    "Discount" => $discount_price,
                     "Costs" => [
-                        "Shipping" => $extra['shipping_price'] ?? 0,
+                        "Shipping" => $shipping_price,
                         "Other"    => 0
                     ],
                     "TotalAmount" => $amount
@@ -222,38 +253,9 @@ class KeepaDriver extends Driver
         ];
 
 
+        return $data;
 
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->jwtToken(),
-            'Content-Type' => 'application/json',
-        ])->timeout(60)->post($this->url_payment_token, $data);
-
-        PaymentGatewayLog::pay_log($payment_id, $response->body());
-
-        if ($response->failed()) {
-            abort(500, 'خطا در اتصال به درگاه پرداخت');
-        }
-
-        $result = $this->decodeJsonResponse($response);
-
-        $token = $result['Content']['payment_token'] ?? null;
-        $paymentUrl = $result['Content']['payment_url'] ?? null;
-
-        if (!$token || !$paymentUrl) {
-            abort(500, 'دریافت توکن پرداخت کیپا با خطا مواجه شد');
-        }
-
-        PaymentGatewayLog::set_token($payment_id, $token);
-
-        $formInputs = [
-            'payment_token' => $token,
-        ];
-
-        return $this->redirectWithForm($paymentUrl, $formInputs, 'POST');
     }
-
-
-
 
 
 
@@ -273,8 +275,10 @@ class KeepaDriver extends Driver
 
         $body = $response->body();
 
+        PaymentGatewayLog::verify_log($this->payment_id, $body, $this->ref_num, $this->trace_number);
+
         if ($response->failed()) {
-            PaymentGatewayLog::verify_log($this->payment_id, $body, $this->ref_num, $this->trace_number);
+
 
             return [
                 'status' => 0,
@@ -283,9 +287,6 @@ class KeepaDriver extends Driver
         }
 
         $result = $response->json();
-
-
-        PaymentGatewayLog::verify_log($this->payment_id, $body, $this->ref_num, $this->trace_number);
 
         if ((isset($result['Status']) && $result['Status'] == 200)) {
 
@@ -363,7 +364,7 @@ class KeepaDriver extends Driver
     {
 
         $payload =  [
-            'payment_token' => $this->token,
+            'payment_token'  => $this->token,
             'reciept_number' => $this->ref_num,
         ];
 
@@ -374,8 +375,6 @@ class KeepaDriver extends Driver
         ])->timeout(60)->post($this->url_settle, $payload);
 
         $body = $response->body();
-
-
 
         if ($response->failed()) {
             $statusResult = $this->get_status();
@@ -411,7 +410,7 @@ class KeepaDriver extends Driver
 
             PaymentGatewayLog::settle_log($this->payment_id, $body, 1);
 
-            $this->trace_number = ($settle_result['transaction_id'] ?? null);
+            $this->trace_number = $result['Content']['ConfirmTransactionNumber'];
 
             return [
                 'status' => 1
@@ -432,6 +431,66 @@ class KeepaDriver extends Driver
 
 
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function refund(){
+
+        $payment_id = $this->payment_id;
+
+        $payment = PaymentGatewayLog::get_payment_log($this->payment_id);
+
+        $data = [
+            'transaction_id' => $payment->trace_number
+        ];
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . self::jwtToken(),
+            'Content-Type' => 'application/json',
+        ])->timeout(60)->post($this->url_revert, $data); // ارسال داده‌ها به صورت JSON
+
+
+        PaymentGatewayLog::refund_log($payment_id, $response->body());
+
+        if ($response->failed()) {
+            return [
+                'status'  => 0,
+                'message' => $response->body()
+            ];
+        }
+
+        $result = $response->json();
+
+        if (isset($result['Status']) && $result['Status'] == 200){
+            return [
+                'status'  => 1,
+                'message' => $result['Message'] ?? 'Operation Revert Success'
+            ];
+        }
+        else{
+            return [
+                'status'  => 0,
+                'message' => $result['Message'] ?? 'It is not possible to delete the order'
+            ];
+        }
+
+    }
+
+
+
+
 
 
 

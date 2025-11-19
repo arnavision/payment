@@ -96,6 +96,19 @@ class PaymentGatewayLog extends Model
 
 
 
+    public static function get_payment_log(string $payment_id)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        return $log;
+    }
+
+
+
 
     public static function get_log_by_token(string $token)
     {
@@ -134,7 +147,7 @@ class PaymentGatewayLog extends Model
 
 
 
-    public static function settle_log(string $payment_id, string $response_settle, int $status)
+    public static function settle_log(string $payment_id, string $response_settle, int $status, $trace_number = null)
     {
         $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
 
@@ -144,6 +157,7 @@ class PaymentGatewayLog extends Model
 
         $log->response_settle  = $response_settle;
         $log->status  = $status;
+        $log->trace_number  = $trace_number;
         $log->save();
     }
 
