@@ -45,11 +45,6 @@ class KeepaDriver extends Driver
         return $this->payment_id;
     }
 
-    public function setPaymentId($payment_id)
-    {
-        $this->payment_id = $payment_id;
-    }
-
     public function getRefNum()
     {
         return $this->ref_num;
@@ -381,9 +376,13 @@ class KeepaDriver extends Driver
 
             if ($statusResult['status'] == 200 && $statusResult['transaction_id']){
 
-                PaymentGatewayLog::settle_log($this->payment_id, $body, 1);
-
                 $this->trace_number = $statusResult['transaction_id'];
+
+                PaymentGatewayLog::settle_log($this->payment_id, $body . ' status: ' . json_encode($statusResult), 1);
+
+                PaymentGatewayLog::set_transaction_id($this->payment_id, $statusResult['transaction_id']);
+
+                PaymentGatewayLog::set_trace_number($this->payment_id, $this->trace_number);
 
                 return [
                     'status' => 1
@@ -398,8 +397,6 @@ class KeepaDriver extends Driver
                 ];
             }
 
-
-
         }
 
 
@@ -408,9 +405,13 @@ class KeepaDriver extends Driver
 
         if (isset($result['Status']) && $result['Status'] == 200){
 
+            $this->trace_number = $result['Content']['ConfirmTransactionNumber'];
+
             PaymentGatewayLog::settle_log($this->payment_id, $body, 1);
 
-            $this->trace_number = $result['Content']['ConfirmTransactionNumber'];
+            PaymentGatewayLog::set_transaction_id($this->payment_id, $result['Content']['ConfirmTransactionNumber']);
+
+            PaymentGatewayLog::set_trace_number($this->payment_id, $this->trace_number);
 
             return [
                 'status' => 1
@@ -439,22 +440,14 @@ class KeepaDriver extends Driver
 
 
 
-
-
-
-
-
-
-
-    public function refund(){
-
-        $payment_id = $this->payment_id;
-
-        $payment = PaymentGatewayLog::get_payment_log($this->payment_id);
+    public function refund($transaction_id){
 
         $data = [
-            'transaction_id' => $payment->trace_number
+            'transaction_id' => $transaction_id
         ];
+
+        $payment = PaymentGatewayLog::get_log_by_transaction_id($transaction_id);
+
 
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . self::jwtToken(),
@@ -462,7 +455,7 @@ class KeepaDriver extends Driver
         ])->timeout(60)->post($this->url_revert, $data); // ارسال داده‌ها به صورت JSON
 
 
-        PaymentGatewayLog::refund_log($payment_id, $response->body());
+        PaymentGatewayLog::refund_log($payment->payment_id, $response->body());
 
         if ($response->failed()) {
             return [
@@ -474,6 +467,9 @@ class KeepaDriver extends Driver
         $result = $response->json();
 
         if (isset($result['Status']) && $result['Status'] == 200){
+
+            PaymentGatewayLog::change_status($payment->payment_id, 0);
+
             return [
                 'status'  => 1,
                 'message' => $result['Message'] ?? 'Operation Revert Success'

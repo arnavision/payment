@@ -147,7 +147,7 @@ class PaymentGatewayLog extends Model
 
 
 
-    public static function settle_log(string $payment_id, string $response_settle, int $status, $trace_number = null)
+    public static function settle_log(string $payment_id, string $response_settle, int $status)
     {
         $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
 
@@ -157,9 +157,23 @@ class PaymentGatewayLog extends Model
 
         $log->response_settle  = $response_settle;
         $log->status  = $status;
+        $log->save();
+    }
+
+
+
+    public static function set_trace_number(string $payment_id, $trace_number)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
         $log->trace_number  = $trace_number;
         $log->save();
     }
+
 
 
 
@@ -175,6 +189,19 @@ class PaymentGatewayLog extends Model
         $log->save();
     }
 
+
+
+    public static function change_status(string $payment_id, $status)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->status  = $status;
+        $log->save();
+    }
 
 
 
