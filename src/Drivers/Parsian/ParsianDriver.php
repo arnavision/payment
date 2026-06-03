@@ -88,8 +88,8 @@ class ParsianDriver extends Driver implements GatewayInterface
                 $this->token = (string) $result['token'];
 
                 return $this->redirectWithForm(
-                    rtrim((string) $this->config['payment_url'], '/') . '/?token=' . $this->token,
-                    [],
+                    (string) $this->config['payment_url'],
+                    ['token'=>$this->token],
                     'GET'
                 );
             }
