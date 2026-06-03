@@ -28,6 +28,37 @@ return [
             'username' => env('TARA_USERNAME'),
             'password' => env('TARA_PASSWORD'),
             'service_id' => env('TARA_SERVICE_ID')
-        ]
+        ],
+        'parsian' => [
+            'login_account' => env('PARSIAN_LOGIN_ACCOUNT'),
+
+            'sale_url' => env(
+                'PARSIAN_SALE_URL',
+                'https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx'
+            ),
+
+            'confirm_url' => env(
+                'PARSIAN_CONFIRM_URL',
+                'https://pec.shaparak.ir/NewIPGServices/Confirm/ConfirmService.asmx'
+            ),
+
+            'reverse_url' => env(
+                'PARSIAN_REVERSE_URL',
+                'https://pec.shaparak.ir/NewIPGServices/Reverse/ReversalService.asmx'
+            ),
+
+            'payment_url' => env(
+                'PARSIAN_PAYMENT_URL',
+                'https://pec.shaparak.ir/NewIPG'
+            ),
+
+            'timeout' => env('PARSIAN_TIMEOUT', 10),
+
+            /*
+             * کد رسمی پارسیان SSL_VERIFYPEER را 0 گذاشته.
+             * برای production بهتر است true تست شود، اما برای سازگاری با مستندات فعلاً false.
+             */
+            'ssl_verify' => env('PARSIAN_SSL_VERIFY', false),
+        ],
     ],
 ];
