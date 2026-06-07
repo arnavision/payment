@@ -70,15 +70,7 @@ return [
 
         ],
 
-        'keepa' => [
-            'base_url' => env('KEEPA_BASE_URL', 'https://api.kipaa.ir'),
-            'token' => env('KEEPA_TOKEN'),
-        ],
 
-
-
-
-        ],
         'parsian' => [
             'login_account' => env('PARSIAN_LOGIN_ACCOUNT'),
 
@@ -117,5 +109,6 @@ return [
             'terminal_id' => env('KEEPA_TERMINAL_ID'),
             'timeout' => env('KEEPA_TIMEOUT', 30),
         ],
+
     ],
 ];

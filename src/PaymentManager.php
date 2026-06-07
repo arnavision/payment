@@ -13,7 +13,6 @@ use Arnavision\PaymentGateway\Drivers\Zarinpal\ZarinpalDriver;
 use Arnavision\PaymentGateway\Drivers\Melli\MelliDriver;
 use \Arnavision\PaymentGateway\Drivers\Sadad\SadadDriver;
 use Arnavision\PaymentGateway\Drivers\Snapp\SnappDriver;
-use Arnavision\PaymentGateway\Drivers\Keepa\KeepaDriver;
 use Illuminate\Http\Response;
 
 class PaymentManager
@@ -37,7 +36,6 @@ class PaymentManager
             'top'=>new TopDriver(),
             'saipay'=>new SaipayDriver(),
             'snapp'=>new SnappDriver(),
-            'keepa'=>new KeepaDriver(),
             'parsian' => new ParsianDriver(),
             'keepa' => new KeepaDriver(),
             default => throw new \InvalidArgumentException("درگاه {$driver} پشتیبانی نمی‌شود."),
