@@ -3,6 +3,7 @@
 namespace Arnavision\PaymentGateway;
 
 use Arnavision\PaymentGateway\Contracts\GatewayInterface;
+use Arnavision\PaymentGateway\Drivers\Keepa\KeepaDriver;
 use Arnavision\PaymentGateway\Drivers\Mellat\MellatDriver;
 use Arnavision\PaymentGateway\Drivers\Parsian\ParsianDriver;
 use Arnavision\PaymentGateway\Drivers\Tara\TaraDriver;
@@ -28,6 +29,7 @@ class PaymentManager
             'zarinpal'=> new ZarinpalDriver(),
             'tara'=>new TaraDriver(),
             'parsian' => new ParsianDriver(),
+            'keepa' => new KeepaDriver(),
             default => throw new \InvalidArgumentException("درگاه {$driver} پشتیبانی نمی‌شود."),
         };
     }

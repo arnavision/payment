@@ -60,5 +60,12 @@ return [
              */
             'ssl_verify' => env('PARSIAN_SSL_VERIFY', false),
         ],
+        'keepa' => [
+            'base_url' => env('KEEPA_BASE_URL'),
+            'client_id' => env('KEEPA_CLIENT_ID'),
+            'client_secret' => env('KEEPA_CLIENT_SECRET'),
+            'terminal_id' => env('KEEPA_TERMINAL_ID'),
+            'timeout' => env('KEEPA_TIMEOUT', 30),
+        ],
     ],
 ];
