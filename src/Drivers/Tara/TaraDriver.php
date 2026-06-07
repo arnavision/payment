@@ -21,10 +21,21 @@ class TaraDriver extends Driver
     private $payment_id;
     private $trace_number;
     private $state;
-    protected $URL_AUTH;
-    protected $URL_TOKEN;
-    protected $URL_PURCHASE;
-    protected $URL_VERIFY;
+    private $amount;
+
+
+    private $base_url;
+    protected $url_auth;
+    protected $url_token;
+    protected $url_purchase;
+    protected $url_verify;
+    private $username;
+    private $password;
+    private $service_id;
+
+
+
+
     public function getPaymentId()
     {
         return $this->payment_id;
@@ -47,26 +58,34 @@ class TaraDriver extends Driver
         return $this->ref_num;
     }
 
+
     public function __construct()
     {
         $this->config = config('payment.gateways.tara');
-        $this->URL_AUTH = $this->config['api_url'] . '/v2/authenticate';
-        $this->URL_TOKEN = $this->config['api_url'] . '/getToken';
-        $this->URL_PURCHASE = $this->config['api_url'] . '/ipgPurchase';
-        $this->URL_VERIFY = $this->config['api_url'] . '/purchaseVerify';
+        $this->base_url = $this->config['base_url'];
+        $this->url_auth = $this->base_url . '/api/v2/authenticate';
+        $this->url_token = $this->base_url . '/api/getToken';
+        $this->url_purchase = $this->base_url . '/api/ipgPurchase';
+        $this->url_verify = $this->base_url . '/api/purchaseVerify';
+
+
+        $this->username = $this->config['username'];
+        $this->password = $this->config['password'];
+        $this->service_id = $this->config['service_id'];
     }
 
 
     public function getTokenAuth()
     {
-        $url =  $this->URL_AUTH ;
+        $url =  $this->url_auth ;
 
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
         ])->post($url, [
-            'username' => $this->config['username'],
-            'password' => $this->config['password'], // اصلاح شد: باید password باشد نه username
+            'username' => $this->username,
+            'password' => $this->password,
         ]);
+
         if ($response->failed()) {
             return [
                 'error' => 'Failed to authenticate',
@@ -75,6 +94,34 @@ class TaraDriver extends Driver
         }
 
         return $response->json();
+    }
+
+
+    public function setParamsCallback(Request $request)
+    {
+
+        $result           = $request->post('result');
+        $token            = $request->post('token');
+        $channelRefNumber = $request->post('channelRefNumber');
+        $payment_id       = $request->post('additionalData');
+
+        $this->payment_id   = $payment_id;
+        $this->token        = $token;
+        $this->ref_num      = $channelRefNumber;
+
+        $paymentGatewayLog = PaymentGatewayLog::get_log($payment_id);
+        $this->amount = $paymentGatewayLog->amount;
+
+
+
+        if($result == 0){
+            $this->state = true;
+        }
+        else{
+            $this->state = false;
+        }
+
+        PaymentGatewayLog::callback_log($payment_id, json_encode($request->all()), $this->state, $this->ref_num, null);
     }
 
 
@@ -91,214 +138,130 @@ class TaraDriver extends Driver
     }
 
 
-    public function get_token($amount, $orderId, $mobile)
+    public function pay(int $amount, string $payment_id, string $callback, array $extra = []): RedirectionForm
     {
+
+        if (PaymentGatewayLog::where('payment_id', $payment_id)->exists()) {
+            abort(409,'Duplicate Payment ID!' );
+        }
+
+        PaymentGatewayLog::start_log($amount, $payment_id, $callback, 'tara', $extra);
+
         try {
-            // دریافت توکن احراز هویت
+
             $authResult = $this->getTokenAuth();
-            dd($authResult);
-            Payment::logResult($orderId, $authResult);
 
-            $token = $authResult['accessToken'] ?? null;
+            $bearer_token = $authResult['accessToken'] ?? null;
 
-            if (!$token) {
-                throw new Exception('Failed to get authentication token');
+            if (!$bearer_token) {
+                abort(500, 'Failed to get authentication token');
             }
 
-            Payment::setTokenTara($orderId, $token);
-
-            // دریافت اطلاعات کالاها
-            $goods = Shopcart::getGoods();
-
-            if (!$goods || $goods->isEmpty()) {
-                throw new Exception('Cart is empty');
-            }
-
-            // آماده سازی آیتم های فاکتور
-            $invoiceItems = $goods->map(function ($good) use ($orderId) {
-                return [
-                    'name' => $good->item->title,
-                    'code' => $good->item->code,
-                    'count' => $good->count,
-                    'unit' => 9,
-                    'fee' => $good->price,
-                    'group' => 2,
-                    'groupTitle' => 'آجیل و خشکبار',
-                    'data' => 'test',
-                    'orderid' => $orderId
-                ];
-            })->toArray();
-
-            // آماده سازی داده های درخواست
             $requestData = [
-                'additionalData' => $orderId,
-                'callBackUrl' => $this->callbackUrl,
+                'additionalData' => $payment_id,
+                'callBackUrl' => $callback,
                 'vat' => '0',
                 'amount' => $amount,
-                'mobile' => $mobile,
-                'orderid' => $orderId,
-                'ip' => request()->ip(),
+                'mobile' => $extra['mobile'] ?? null,
+                'orderid' => $payment_id,
+                'ip' => $this->getIp(),
                 'serviceAmountList' => [
                     [
                         'serviceId' => $this->config['service_id'],
                         'amount' => $amount
                     ]
                 ],
-                'taraInvoiceItemList' => $invoiceItems
+                'taraInvoiceItemList' => $extra['invoiceItems']
             ];
 
-            // ارسال درخواست به درگاه پرداخت
             $response = Http::withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $token
-            ])->post($this->URL_TOKEN);
+                'Authorization' => 'Bearer ' . $bearer_token
+            ])->post($this->url_token, $requestData);
 
-            if ($response->failed()) {
-                Payment::logResult($orderId, 'Error: ' . $response->status());
-                throw new Exception('Payment gateway request failed');
+            PaymentGatewayLog::pay_log($payment_id, $response->body());
+
+            if ($response->successful()) {
+
+                $responseData = $response->json();
+
+                if (isset($responseData['token'])){
+
+                    $paymentData = [
+                        'username' => $this->username,
+                        'token'    => $responseData['token'],
+                    ];
+
+                    return $this->redirectWithForm($this->url_purchase, $paymentData);
+
+                }
+
             }
 
-            $responseData = $response->json();
-            Payment::logResult($orderId, $responseData);
-
-            return $responseData['token'] ?? null;
-
-        } catch (Exception $e) {
-            Log::error('Payment error: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-
-    public function pay(int $amount, string $paymentId, string $callbackUrl, array $extra = []): RedirectionForm
-    {
-        // شروع لاگ تراکنش
-//        PaymentGatewayLog::startLog($amount, $paymentId, $callbackUrl, 'tara', $extra);
-
-        try {
-            // دریافت توکن احراز هویت
-            $token = $this->get_token($amount, $paymentId, $extra['mobile'] ?? '');
-
-            // آماده سازی داده‌های درخواست
-            $paymentData = [
-                'username' => $this->config['username'],
-                'token' => $token,
-                'amount' => $amount,
-                'order_id' => $paymentId,
-                'callback_url' => $callbackUrl,
-                'mobile' => $extra['mobile'] ?? null,
-                // سایر پارامترهای مورد نیاز درگاه تارا
-            ];
-
-            // ارسال درخواست به درگاه تارا
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $this->getTokenAuth()
-            ])->post( $this->URL_PURCHASE, $paymentData);
-
-            // ذخیره لاگ پاسخ
-            PaymentGatewayLog::payLog($paymentId, $response->json());
-
-            if ($response->successful() && $response['status'] == 'success') {
-                // ریدایرکت به صفحه پرداخت بانک
-                return $this->redirectWithForm($response['payment_url']);
-            }
-
-            throw new \Exception('Payment request failed: ' . ($response['message'] ?? 'Unknown error'));
+            abort(500, 'خطا در اتصال به درگاه پرداخت');
 
         } catch (\Exception $e) {
-            // ذخیره خطا در لاگ
-            PaymentGatewayLog::errorLog($paymentId, $e->getMessage());
             abort(500, 'خطا در اتصال به درگاه پرداخت');
         }
+
     }
+
+
+
 
     public function verify()
     {
-        try {
-            // دریافت توکن احراز هویت از دیتابیس
-            $tokenBearer = Payment::getTokenTara($orderId);
 
-            if (!$tokenBearer) {
-                throw new Exception('توکن پرداخت یافت نشد');
-            }
+        $authResult = $this->getTokenAuth();
 
-            // آماده سازی داده‌های درخواست
-            $verifyData = [
-                'ip' => $ip,
-                'token' => $token
-            ];
+        $accessToken = $authResult['accessToken'] ?? null;
 
-            // ارسال درخواست وریفای به درگاه تارا
-            $response = Http::withHeaders([
-                'Accept' => 'application/json',
-                'Content-Type' => 'application/json',
-                'Authorization' => 'Bearer ' . $tokenBearer
-            ])->post($this->baseUrl . '/purchaseVerify', $verifyData);
+        if (!$accessToken){
+            abort(500, 'access token dont exist');
+        }
 
-            // ذخیره لاگ پاسخ
-            Payment::setLogResult($orderId, $response->body());
+        // آماده سازی داده‌های درخواست
+        $verifyData = [
+            'ip' => $this->getIp(),
+            'token' => $this->token,
+        ];
 
-            $result = $response->json();
+        // ارسال درخواست وریفای به درگاه تارا
+        $response = Http::withHeaders([
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+            'Authorization' => 'Bearer ' . $accessToken
+        ])->post($this->url_verify, $verifyData);
 
-            // ذخیره اطلاعات تراکنش
-            if ($response->successful() && isset($result['status']) && $result['status'] === 'success') {
-                PaymentGatewayLog::verifyLog(
-                    $orderId,
-                    $response->body(),
-                    $result['ref_num'] ?? null,
-                    $result['trace_number'] ?? null
-                );
 
-                return [
-                    'status' => true,
-                    'message' => 'تراکنش با موفقیت تایید شد',
-                    'data' => $result
-                ];
-            }
+        $result = $response->json();
 
-            throw new Exception($result['message'] ?? 'خطا در تایید تراکنش');
+        PaymentGatewayLog::verify_log($this->payment_id, $response->body(), $this->ref_num, $this->trace_number);
 
-        } catch (Exception $e) {
-            // ذخیره خطا در لاگ
-            Payment::setLogResult($orderId, 'Verify Error: ' . $e->getMessage());
-
+        if(isset($result['result']) && isset($result['amount']) && $result['result'] == 0 && $result['amount'] == $this->amount){
             return [
-                'status' => false,
-                'message' => $e->getMessage(),
-                'code' => $e->getCode()
+                'status'  => 1,
+                'message' => 'Confirm is ok',
             ];
         }
+        else{
+            return [
+                'status'  => 0,
+                'message' => 'Confirm is not ok',
+            ];
+        }
+
     }
 
 
     public function settle()
     {
-
-        PaymentGatewayLog::settle_log($this->payment_id, 'melli has not settle',1);
+        PaymentGatewayLog::settle_log($this->payment_id, 'tara has not settle',1);
         return [
             'status' => 1
         ];
     }
 
-    public function setParamsCallback(Request $request)
-    {
 
-        $payment_id  = $request->post('OrderId');
-        $Token       = $request->post('token');
-        $ResCode     = $request->post('ResCode');
-
-        $this->payment_id = $payment_id;
-        $this->token      = $Token;
-
-        if ($ResCode == "0"){
-            $this->state = true;
-        }
-        else{
-            $this->state = false;
-        }
-
-        PaymentGatewayLog::callback_log($payment_id, json_encode($request->all()), $this->state, $this->ref_num, $this->trace_number);
-    }
 }
