@@ -47,7 +47,7 @@ class PaymentGatewayLog extends Model
 
 
 
-    public static function pay_log(string $payment_id, string $response_pay, string $authority = null)
+    public static function pay_log(string $payment_id, string $response_pay)
     {
         $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
 
@@ -96,6 +96,36 @@ class PaymentGatewayLog extends Model
 
 
 
+    public static function get_payment_log(string $payment_id)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        return $log;
+    }
+
+
+
+
+    public static function get_log_by_token(string $token)
+    {
+        $log = PaymentGatewayLog::query()->where(['token'=>$token, 'status' => 0])->first();
+
+        if (!$log){
+            abort(500, 'token dont exit');
+        }
+
+        return $log;
+    }
+
+
+
+
+
+
 
 
 
@@ -131,6 +161,95 @@ class PaymentGatewayLog extends Model
     }
 
 
+
+    public static function set_trace_number(string $payment_id, $trace_number)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->trace_number  = $trace_number;
+        $log->save();
+    }
+
+
+
+
+    public static function refund_log(string $payment_id, string $response_refund)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->response_refund  = $response_refund;
+        $log->save();
+    }
+
+
+
+    public static function change_status(string $payment_id, $status)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id'=>$payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->status  = $status;
+        $log->save();
+    }
+
+
+
+
+    public static function set_token(string $payment_id, string $token)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id' => $payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->token  = $token;
+        $log->save();
+    }
+
+
+
+
+
+    public static function set_transaction_id(string $payment_id, string $transaction_id)
+    {
+        $log = PaymentGatewayLog::query()->where(['payment_id' => $payment_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        $log->transaction_id  = $transaction_id;
+        $log->save();
+
+    }
+
+
+
+
+
+    public static function get_log_by_transaction_id(string $transaction_id)
+    {
+        $log = PaymentGatewayLog::query()->where(['transaction_id' => $transaction_id])->first();
+
+        if (!$log){
+            abort(500, 'payment ID dont exit');
+        }
+
+        return $log;
+
+    }
 
 
 

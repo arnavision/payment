@@ -29,6 +29,48 @@ return [
             'password' => env('TARA_PASSWORD'),
             'service_id' => env('TARA_SERVICE_ID')
         ],
+
+        'fadax' => [
+            'api_url' => env('FADAX_URL'),
+            'username' => env('FADAX_USERNAME'),
+            'password' => env('FADAX_PASSWORD'),
+            'token_bearer' => env('FADAX_TOKEN'),
+        ],
+        'apsan' => [
+            'username' => env('APSAN_USERNAME'),
+            'password' => env('APSAN_PASSWORD'),
+            'terminal' => env('APSAN_TERMINAL'),
+        ],
+        'sadad' => [
+            'merchant_config_id' => env('SADAD_MERCHANT_CONFIG_ID'),
+            'merchant_id'        => env('SADAD_MERCHANT_ID'),
+            'terminal_id'        => env('SADAD_TERMINAL_ID'),
+        ],
+
+        'top' => [
+            'username' => env('TOP_USERNAME'),
+            'password' => env('TOP_PASSWORD'),
+        ],
+
+
+
+        'saipay' => [
+            'username' => env('SAIPAY_USERNAME'),
+            'password' => env('SAIPAY_PASSWORD'),
+        ],
+
+
+
+        'snapp' => [
+            'url_base' => env('SNAPP_URL'),
+            'username' => env('SNAPP_USERNAME'),
+            'password' => env('SNAPP_PASSWORD'),
+            'client_id' => env('SNAPP_CLIENT_ID'),
+            'client_secret' => env('SNAPP_CLIENT_SECRET'),
+
+        ],
+
+
         'parsian' => [
             'login_account' => env('PARSIAN_LOGIN_ACCOUNT'),
 
@@ -67,5 +109,6 @@ return [
             'terminal_id' => env('KEEPA_TERMINAL_ID'),
             'timeout' => env('KEEPA_TIMEOUT', 30),
         ],
+
     ],
 ];

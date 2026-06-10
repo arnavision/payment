@@ -15,7 +15,7 @@ class KeepaClient
         protected string $clientId,
         protected string $clientSecret,
         protected int|string $terminalId,
-        protected int $timeout = 30,
+        protected int $timeout = 30
     ) {
         $this->baseUrl = rtrim($this->baseUrl, '/');
     }
@@ -48,7 +48,7 @@ class KeepaClient
         ?string $payload = null,
         array $items = []
     ): array {
-        $data = $this->authorizedRequest()
+        $response = $this->authorizedRequest()
             ->post($this->url('/creditcore/thirdpartygateway/cpg-payments/v2/get-token'), [
                 'terminalId' => (int) $this->terminalId,
                 'invoiceNumber' => $invoiceNumber,
@@ -58,7 +58,7 @@ class KeepaClient
                 'items' => $items,
             ]);
 
-        return $this->handleResponse($data);
+        return $this->handleResponse($response);
     }
 
     public function inquiry(string $token): array
@@ -100,9 +100,7 @@ class KeepaClient
             return is_array($json) ? $json : [];
         }
 
-        $message = $this->extractErrorMessage($json);
-
-        throw new RuntimeException($message, $response->status());
+        throw new RuntimeException($this->extractErrorMessage($json), $response->status());
     }
 
     protected function extractErrorMessage(mixed $json): string
