@@ -25,13 +25,13 @@ class KeepaDriver extends Driver implements GatewayInterface
     private $inquiry = null;
     public function __construct()
     {
-        $this->config = config('payment.gateways.keepa', []);
+        $this->config = config('payment.gateways.keepa');
 
         $this->client = new KeepaClient(
-            baseUrl: (string) ($this->config['base_url'] ?? ''),
-            clientId: (string) ($this->config['client_id'] ?? ''),
-            clientSecret: (string) ($this->config['client_secret'] ?? ''),
-            terminalId: $this->config['terminal_id'] ?? '',
+            baseUrl: (string)$this->config['base_url'],
+            clientId: (string)$this->config['client_id'],
+            clientSecret: (string)$this->config['client_secret'],
+            terminalId: $this->config['terminal_id'],
             timeout: (int)($this->config['timeout'] ?? 30)
         );
     }
@@ -48,9 +48,9 @@ class KeepaDriver extends Driver implements GatewayInterface
         return $this->payment_id;
     }
 
-    public function getRefNum()
+    public function getTraceNum()
     {
-        return $this->ref_num;
+        return $this->trace_number;
     }
 
     public function getState()
@@ -58,40 +58,9 @@ class KeepaDriver extends Driver implements GatewayInterface
         return $this->state;
     }
 
-    public function getTraceNum()
+    public function getRefNum()
     {
-        return $this->trace_number;
-    }
-
-    public function setParamsCallback(Request $request)
-    {
-        $this->token = $request->query('token') ?: $request->input('token');
-
-        if (!$this->token) {
-            $this->state = false;
-            return;
-        }
-
-        $paymentLog = PaymentGatewayLog::get_log_by_token($this->token);
-
-        $this->payment_id = (string) $paymentLog->payment_id;
-        $this->amount = (int) $paymentLog->amount;
-        $this->trace_number = $this->token;
-        $this->ref_num = null;
-
-        /*
-         * در کیپا callback فقط یعنی کاربر از کیپا برگشته.
-         * موفقیت قطعی فقط بعد از inquiry/verify مشخص می‌شود.
-         */
-        $this->state = true;
-
-        PaymentGatewayLog::callback_log(
-            $this->payment_id,
-            json_encode($request->all(), JSON_UNESCAPED_UNICODE),
-            1,
-            $this->ref_num,
-            $this->trace_number
-        );
+        return $this->ref_num;
     }
 
     public function pay(int $amount, string $payment_id, string $callback, array $extra = []): RedirectionForm
@@ -108,24 +77,26 @@ class KeepaDriver extends Driver implements GatewayInterface
                 amount: $amount,
                 callbackUrl: $callback,
                 payload: $extra['payload'] ?? null,
-                items: $extra['items'] ?? $extra['invoiceItems'] ?? []
+                items: $extra['items'] ?? []
             );
 
-            $token = $result['token'] ?? null;
-            $paymentUrl = $result['paymentUrl'] ?? null;
+            $this->token = $result['token'] ?? null;
 
             PaymentGatewayLog::pay_log(
                 $payment_id,
-                json_encode($result, JSON_UNESCAPED_UNICODE)
+                json_encode($result, JSON_UNESCAPED_UNICODE),
+                $this->token
             );
 
-            if (!$token || !$paymentUrl) {
-                abort(500, 'دریافت توکن پرداخت کیپا با خطا مواجه شد.');
+            if (!empty($result['paymentUrl'])) {
+                return $this->redirectWithForm(
+                    $result['paymentUrl'],
+                    ['token' => $result['token']],
+                    'GET'
+                );
             }
 
-            PaymentGatewayLog::set_token($payment_id, $token);
-
-            return $this->redirectWithForm($paymentUrl, ['token'=>$token], 'GET');
+            abort(500, 'Keepa paymentUrl not received.');
         } catch (Throwable $e) {
             PaymentGatewayLog::pay_log(
                 $payment_id,
@@ -185,9 +156,6 @@ class KeepaDriver extends Driver implements GatewayInterface
     public function verify()
     {
         try {
-            $inquiry = $this->client->inquiry($this->token);
-            $paymentStatus = $inquiry['status'] ?? null;
-
 
             $paymentStatus = $this->inquiry['status'] ?? null;
             $log = PaymentGatewayLog::get_log($this->payment_id);
@@ -200,7 +168,6 @@ class KeepaDriver extends Driver implements GatewayInterface
                     json_encode([
                         'inquiry' => $this->inquiry,
                     ], JSON_UNESCAPED_UNICODE),
-                    json_encode(['inquiry' => $inquiry], JSON_UNESCAPED_UNICODE),
                     $this->ref_num,
                     $this->trace_number
                 );
@@ -220,7 +187,6 @@ class KeepaDriver extends Driver implements GatewayInterface
                     json_encode([
                         'inquiry' => $this->inquiry,
                     ], JSON_UNESCAPED_UNICODE),
-                    json_encode(['inquiry' => $inquiry], JSON_UNESCAPED_UNICODE),
                     $this->ref_num,
                     $this->trace_number
                 );
@@ -287,6 +253,10 @@ class KeepaDriver extends Driver implements GatewayInterface
 
     public function settle()
     {
+        /*
+         * کیپا settle جدا ندارد.
+         * تایید نهایی با verify انجام می‌شود.
+         */
         PaymentGatewayLog::settle_log(
             $this->payment_id,
             'Keepa payment verified by verify endpoint; no separate settle call.',
