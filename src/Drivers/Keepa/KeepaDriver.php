@@ -119,7 +119,8 @@ class KeepaDriver extends Driver implements GatewayInterface
 
         $inquiry = $this->client->inquiry($this->token);
         $this->inquiry = $inquiry;
-        $this->payment_id = $inquiry['invoice_number'] ?? null;
+        $this->payment_id = $inquiry['invoiceNumber'] ?? null;
+
         if (!$this->token) {
             $this->state = false;
             return;
@@ -134,8 +135,8 @@ class KeepaDriver extends Driver implements GatewayInterface
 
         $this->payment_id = (string)$log->payment_id;
         $this->amount = (int)$log->amount;
-        $this->trace_number = null;
-        $this->ref_num = null;
+        $this->trace_number = $log->trace_number ?? null;
+        $this->ref_num = $log->ref_num ?? null;
 
         if (KeepaStatus::isVerified($inquiry['status']) || KeepaStatus::isWaitingToVerify($inquiry['status'])) {
 
